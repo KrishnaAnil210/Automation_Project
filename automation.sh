@@ -45,3 +45,28 @@ tar -czvf /tmp/${myname}-httpd-logs-${timestamp}.tar /var/log/apache2/*.log
 aws s3 \
 cp /tmp/${myname}-httpd-logs-${timestamp}.tar \
 s3://${s3_bucket}/${myname}-httpd-logs-${timestamp}.tar
+
+#checking if inventory file exists or not
+FILE=/var/www/html/inventory.html
+if test -f "${FILE}"; then
+    echo "${FILE} exists."
+else
+    echo "Creating the file.."
+    echo '<html><table><thead><tr><th>Log_Type</th><th>Date_Created</th><th>Type</th><th>Size</th></tr></thead></table></body></html>' > ${FILE}
+fi
+
+#appending data to the inventory file
+size="$(du -h /tmp/${myname}-httpd-logs-${timestamp}.tar| awk '{print $1;}')"
+echo "<table><tbody><tr><td>httpd-logs</td><td>${timestamp}</td><td>tar</td><td>${size}</td></tr></tbody></table>" >> $FILE
+
+
+
+#Cron Job code
+cron_job_status="$(crontab -l | grep Automation_Project/automation.sh)"
+if [ "" = "${cron_job_status}" ]
+then
+  echo "No CronJob exists. Setting up a cron job."
+  crontab -l | { cat; echo "0 3 * * * /root/Automation_Project/automation.sh"; } | crontab -
+else
+  echo "Cron Job already exists!!"
+fi
